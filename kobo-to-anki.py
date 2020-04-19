@@ -1,8 +1,9 @@
 import sqlite3
 from zipfile import ZipFile
+from bs4 import BeautifulSoup
 
 
-VOLUME = '/Volumes/KOBOeReader/'
+VOLUME = './KOBOeReader/'
 
 
 if __name__ == '__main__':
@@ -15,15 +16,14 @@ if __name__ == '__main__':
         if not content_id.startswith('file:///mnt/onboard/'):
             continue
 
-        print(text)
-
-        book_file, suffix = content_id.split('#', 1)
-        _, xhtml_file = suffix.split(')', 1)
-
-        if '#' in xhtml_file:
-            xhtml_file = xhtml_file.split('#')[0]
+        book_file, _ = content_id.split('#', 1)
+        chapter_file, start_container_path_point = start_container_path.split('#', 1)
 
         with ZipFile(VOLUME + book_file[20:]) as book_zip:
-            with book_zip.open(xhtml_file) as book_chapter:
+            with book_zip.open(chapter_file) as book_chapter:
                 chapter_text = book_chapter.read()
-
+                soup = BeautifulSoup(chapter_text, 'html.parser')
+                start_container_path_point_split = start_container_path_point.split('/')
+                paragraphs = [p.contents for p in soup.find_all('p')]
+                paragraph_index = int(start_container_path_point_split[4]) // 2 + 1
+                print('{} in {}'.format(text, paragraphs[paragraph_index]))
