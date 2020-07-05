@@ -2,7 +2,10 @@ import sqlite3
 from zipfile import ZipFile
 from html.parser import HTMLParser
 from termcolor import colored
+from spacy.lang.nl import Dutch
 
+nlp = Dutch()
+nlp.add_pipe(nlp.create_pipe('sentencizer'))
 
 VOLUME = '/Volumes/KOBOeReader/'
 
@@ -31,14 +34,23 @@ class MyHTMLParser(HTMLParser):
             if not self.__end.startswith(anchor):
                 print(':(')
                 return
-            begin = int(self.__look_for[len(anchor):])
-            end = int(self.__end[len(anchor):])
-            word = data.encode('utf-8')[begin:end].decode('utf-8')
+            begin_in_bytes = int(self.__look_for[len(anchor):])
+            end_in_bytes = int(self.__end[len(anchor):])
+            begin_in_chars = len(data.encode('utf-8')[:begin_in_bytes].decode('utf-8'))
+            end_in_chars = len(data.encode('utf-8')[:end_in_bytes].decode('utf-8'))
+            word = data[begin_in_chars:end_in_chars]
             assert word == self.__should_be
-            print(data.encode('utf-8')[:begin].decode('utf-8'), end='')
-            print(colored(word, 'green'), end='')
-            print(data.encode('utf-8')[end:].decode('utf-8'))
-            print()
+            parsed = nlp(data)
+            for sent in reversed(list(parsed.sents)):
+                word_pos_in_sentence = begin_in_chars - sent[0].idx
+                if word_pos_in_sentence >= 0:
+                    corrected_begin_in_chars = begin_in_chars - sent[0].idx
+                    corrected_end_in_chars = end_in_chars - sent[0].idx
+                    print(sent.text[:corrected_begin_in_chars], end='')
+                    print(colored(word, 'green'), end='')
+                    print(sent.text[corrected_end_in_chars:])
+                    print()
+                    break
 
 
 if __name__ == '__main__':
@@ -60,5 +72,5 @@ if __name__ == '__main__':
                 with book_zip.open(chapter_file) as book_chapter:
                     parser = MyHTMLParser(start_container_path_point[6:-1], end_container_path_point[6:-1], text)
                     parser.feed(book_chapter.read().decode('utf-8'))
-        except:
+        except KeyError:
             pass
