@@ -2,9 +2,10 @@ import sqlite3
 from zipfile import ZipFile
 from html.parser import HTMLParser
 from termcolor import colored
-from spacy.lang.nl import Dutch
+from spacy.lang.sv import Swedish
 
-nlp = Dutch()
+
+nlp = Swedish()
 nlp.add_pipe(nlp.create_pipe('sentencizer'))
 
 VOLUME = '/Volumes/KOBOeReader/'
@@ -40,6 +41,11 @@ class MyHTMLParser(HTMLParser):
             end_in_chars = len(data.encode('utf-8')[:end_in_bytes].decode('utf-8'))
             word = data[begin_in_chars:end_in_chars]
             assert word == self.__should_be
+            begin_in_chars += len(word) - len(str.lstrip(word))
+            end_in_chars += len(word) - len(str.rstrip(word))
+            if word.strip()[-1] in {'.', ',', '?', '!'}:
+                end_in_chars -= 1
+            word = data[begin_in_chars:end_in_chars]
             parsed = nlp(data)
             for sent in reversed(list(parsed.sents)):
                 word_pos_in_sentence = begin_in_chars - sent[0].idx
@@ -47,7 +53,7 @@ class MyHTMLParser(HTMLParser):
                     corrected_begin_in_chars = begin_in_chars - sent[0].idx
                     corrected_end_in_chars = end_in_chars - sent[0].idx
                     print(sent.text[:corrected_begin_in_chars], end='')
-                    print(colored(word, 'green'), end='')
+                    print(colored('[' + word + ']', 'green'), end='')
                     print(sent.text[corrected_end_in_chars:])
                     print()
                     break
