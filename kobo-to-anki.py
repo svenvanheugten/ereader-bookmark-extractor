@@ -1,9 +1,44 @@
 import sqlite3
 from zipfile import ZipFile
-from bs4 import BeautifulSoup
+from html.parser import HTMLParser
+from termcolor import colored
 
 
-VOLUME = './KOBOeReader/'
+VOLUME = '/Volumes/KOBOeReader/'
+
+
+class MyHTMLParser(HTMLParser):
+    def __init__(self, look_for, end, should_be):
+        super().__init__()
+        self.__location = []
+        self.__look_for = look_for
+        self.__end = end
+        self.__should_be = should_be
+
+    def handle_starttag(self, tag, attrs):
+        if len(self.__location) > 0:
+            self.__location[-1] += 1
+        self.__location.append(0)
+
+    def handle_endtag(self, tag):
+        self.__location.pop()
+
+    def handle_data(self, data):
+        if len(self.__location) > 0:
+            self.__location[-1] += 1
+        anchor = '/1/' + '/'.join([str(x) for x in self.__location]) + ':'
+        if self.__look_for.startswith(anchor):
+            if not self.__end.startswith(anchor):
+                print(':(')
+                return
+            begin = int(self.__look_for[len(anchor):])
+            end = int(self.__end[len(anchor):])
+            word = data.encode('utf-8')[begin:end].decode('utf-8')
+            assert word == self.__should_be
+            print(data.encode('utf-8')[:begin].decode('utf-8'), end='')
+            print(colored(word, 'green'), end='')
+            print(data.encode('utf-8')[end:].decode('utf-8'))
+            print()
 
 
 if __name__ == '__main__':
@@ -18,12 +53,12 @@ if __name__ == '__main__':
 
         book_file, _ = content_id.split('#', 1)
         chapter_file, start_container_path_point = start_container_path.split('#', 1)
+        _, end_container_path_point = end_container_path.split('#', 1)
 
-        with ZipFile(VOLUME + book_file[20:]) as book_zip:
-            with book_zip.open(chapter_file) as book_chapter:
-                chapter_text = book_chapter.read()
-                soup = BeautifulSoup(chapter_text, 'html.parser')
-                start_container_path_point_split = start_container_path_point.split('/')
-                paragraphs = [p.contents for p in soup.find_all('p')]
-                paragraph_index = int(start_container_path_point_split[4]) // 2 + 1
-                print('{} in {}'.format(text, paragraphs[paragraph_index]))
+        try:
+            with ZipFile(VOLUME + book_file[20:]) as book_zip:
+                with book_zip.open(chapter_file) as book_chapter:
+                    parser = MyHTMLParser(start_container_path_point[6:-1], end_container_path_point[6:-1], text)
+                    parser.feed(book_chapter.read().decode('utf-8'))
+        except:
+            pass
