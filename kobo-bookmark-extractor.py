@@ -63,7 +63,7 @@ if __name__ == '__main__':
     db = sqlite3.connect(VOLUME + '.kobo/KoboReader.sqlite')
 
     cursor = db.cursor()
-    cursor.execute('''SELECT ContentID, StartContainerPath, EndContainerPath, Text FROM Bookmark''')
+    cursor.execute('''SELECT ContentID, StartContainerPath, EndContainerPath, Text FROM Bookmark ORDER BY DateModified DESC''')
 
     for content_id, start_container_path, end_container_path, text in cursor:
         if not content_id.startswith('file:///mnt/onboard/'):
