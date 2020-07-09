@@ -42,6 +42,10 @@ class MyHTMLParser(HTMLParser):
             self.__end_pos += int(self.__end_epubcti[len(anchor):])
             fragment = self.__scanned_data[self.__start_pos:self.__end_pos].decode('utf-8')
             assert re.sub(r'\s+', '', fragment) == re.sub(r'\s+', '', self.__should_be)
+            print(self.__scanned_data[:self.__start_pos].decode('utf-8'), end='')
+            print(colored(self.__scanned_data[self.__start_pos:self.__end_pos].decode('utf-8'), 'green'), end='')
+            print(self.__scanned_data[self.__end_pos:].decode('utf-8'))
+            print()
         else:
             self.__end_pos = len(self.__scanned_data)
 
