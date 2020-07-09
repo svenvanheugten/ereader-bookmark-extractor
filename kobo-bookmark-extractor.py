@@ -54,13 +54,19 @@ if __name__ == '__main__':
     db = sqlite3.connect(VOLUME + '.kobo/KoboReader.sqlite')
 
     cursor = db.cursor()
-    cursor.execute('''SELECT ContentID, StartContainerPath, EndContainerPath, Text FROM Bookmark ORDER BY DateModified DESC''')
+    cursor.execute('''SELECT ContentID, StartContainerPath, EndContainerPath, Text FROM Bookmark ORDER BY ContentId, DateModified DESC''')
+
+    previous_book_file = None
 
     for content_id, start_container_path, end_container_path, text in cursor:
         if not content_id.startswith('file:///mnt/onboard/'):
             continue
 
         book_file, _ = content_id.split('#', 1)
+
+        if book_file != previous_book_file:
+            print('Processing {}...'.format(book_file))
+
         chapter_file, start_container_path_point = start_container_path.split('#', 1)
         _, end_container_path_point = end_container_path.split('#', 1)
 
@@ -71,3 +77,5 @@ if __name__ == '__main__':
                     parser.feed(book_chapter.read().decode('utf-8'))
         except KeyError:
             pass
+
+        previous_book_file = book_file
