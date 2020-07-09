@@ -56,8 +56,6 @@ class MyHTMLParser(HTMLParser):
 
 
 if __name__ == '__main__':
-    sys.stdout = open(VOLUME + 'kobo-bookmark-extractor-log.txt', 'w')
-
     try:
         db = sqlite3.connect(VOLUME + '.kobo/KoboReader.sqlite')
 
@@ -96,4 +94,8 @@ if __name__ == '__main__':
         if output_descriptor is not None:
             output_descriptor.close()
     except:
-        print("Unexpected error:", sys.exc_info())
+        if getattr(sys, 'frozen', False):
+            with open(VOLUME + 'kobo-bookmark-extractor-log.txt', 'w') as file:
+                file.write(str(sys.exc_info()))
+        else:
+            raise
