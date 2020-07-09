@@ -12,10 +12,10 @@ VOLUME = '/Volumes/KOBOeReader/'
 
 
 class MyHTMLParser(HTMLParser):
-    def __init__(self, look_for, end, should_be):
+    def __init__(self, start, end, should_be):
         super().__init__()
         self.__location = []
-        self.__look_for = look_for
+        self.__start = start
         self.__end = end
         self.__should_be = should_be
 
@@ -31,11 +31,11 @@ class MyHTMLParser(HTMLParser):
         if len(self.__location) > 0:
             self.__location[-1] += 1
         anchor = '/1/' + '/'.join([str(x) for x in self.__location]) + ':'
-        if self.__look_for.startswith(anchor):
+        if self.__start.startswith(anchor):
             if not self.__end.startswith(anchor):
                 print(':(')
                 return
-            begin_in_bytes = int(self.__look_for[len(anchor):])
+            begin_in_bytes = int(self.__start[len(anchor):])
             end_in_bytes = int(self.__end[len(anchor):])
             begin_in_chars = len(data.encode('utf-8')[:begin_in_bytes].decode('utf-8'))
             end_in_chars = len(data.encode('utf-8')[:end_in_bytes].decode('utf-8'))
