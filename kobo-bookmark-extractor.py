@@ -3,6 +3,7 @@ from zipfile import ZipFile
 from html.parser import HTMLParser
 from termcolor import colored
 from spacy.lang.sv import Swedish
+import re
 
 
 nlp = Swedish()
@@ -18,6 +19,8 @@ class MyHTMLParser(HTMLParser):
         self.__start = start
         self.__end = end
         self.__should_be = should_be
+        self.__scanning = False
+        self.__scanned_data = ''
 
     def handle_starttag(self, tag, attrs):
         if len(self.__location) > 0:
@@ -32,31 +35,17 @@ class MyHTMLParser(HTMLParser):
             self.__location[-1] += 1
         anchor = '/1/' + '/'.join([str(x) for x in self.__location]) + ':'
         if self.__start.startswith(anchor):
-            if not self.__end.startswith(anchor):
-                print(':(')
-                return
-            begin_in_bytes = int(self.__start[len(anchor):])
-            end_in_bytes = int(self.__end[len(anchor):])
-            begin_in_chars = len(data.encode('utf-8')[:begin_in_bytes].decode('utf-8'))
-            end_in_chars = len(data.encode('utf-8')[:end_in_bytes].decode('utf-8'))
-            word = data[begin_in_chars:end_in_chars]
-            assert word == self.__should_be
-            begin_in_chars += len(word) - len(str.lstrip(word))
-            end_in_chars += len(word) - len(str.rstrip(word))
-            if word.strip()[-1] in {'.', ',', '?', '!'}:
-                end_in_chars -= 1
-            word = data[begin_in_chars:end_in_chars]
-            parsed = nlp(data)
-            for sent in reversed(list(parsed.sents)):
-                word_pos_in_sentence = begin_in_chars - sent[0].idx
-                if word_pos_in_sentence >= 0:
-                    corrected_begin_in_chars = begin_in_chars - sent[0].idx
-                    corrected_end_in_chars = end_in_chars - sent[0].idx
-                    print(sent.text[:corrected_begin_in_chars], end='')
-                    print(colored('[' + word + ']', 'green'), end='')
-                    print(sent.text[corrected_end_in_chars:])
-                    print()
-                    break
+            self.__scanning = True
+        encoded_data = data.encode('utf-8')
+        if self.__scanning:
+            begin = int(self.__start[len(anchor):]) if self.__start.startswith(anchor) else 0
+            end = int(self.__end[len(anchor):]) if self.__end.startswith(anchor) else None
+            fragment = encoded_data[begin:end].decode('utf-8')
+            self.__scanned_data += fragment
+        if self.__end.startswith(anchor):
+            self.__scanning = False
+            print(self.__scanned_data)
+            assert re.sub(r'\s+', '', self.__scanned_data) == re.sub(r'\s+', '', self.__should_be)
 
 
 if __name__ == '__main__':
