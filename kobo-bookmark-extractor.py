@@ -2,12 +2,8 @@ import sqlite3
 from zipfile import ZipFile
 from html.parser import HTMLParser
 from termcolor import colored
-from spacy.lang.sv import Swedish
 import re
 
-
-nlp = Swedish()
-nlp.add_pipe(nlp.create_pipe('sentencizer'))
 
 VOLUME = '/Volumes/KOBOeReader/'
 
