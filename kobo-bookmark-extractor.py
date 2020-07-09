@@ -57,46 +57,39 @@ class MyHTMLParser(HTMLParser):
 
 
 if __name__ == '__main__':
-    try:
-        db = sqlite3.connect(VOLUME + '.kobo/KoboReader.sqlite')
+    db = sqlite3.connect(VOLUME + '.kobo/KoboReader.sqlite')
 
-        cursor = db.cursor()
-        cursor.execute('''SELECT ContentID, StartContainerPath, EndContainerPath, Text FROM Bookmark ORDER BY ContentId, DateModified DESC''')
+    cursor = db.cursor()
+    cursor.execute('''SELECT ContentID, StartContainerPath, EndContainerPath, Text FROM Bookmark ORDER BY ContentId, DateModified DESC''')
 
-        previous_book_file = None
-        output_descriptor = None
+    previous_book_file = None
+    output_descriptor = None
 
-        for content_id, start_container_path, end_container_path, text in cursor:
-            if not content_id.startswith('file:///mnt/onboard/'):
-                continue
+    for content_id, start_container_path, end_container_path, text in cursor:
+        if not content_id.startswith('file:///mnt/onboard/'):
+            continue
 
-            book_file, _ = content_id.split('#', 1)
+        book_file, _ = content_id.split('#', 1)
 
-            if book_file != previous_book_file:
-                if output_descriptor is not None:
-                    output_descriptor.close()
-                print('Processing {}...'.format(book_file))
-                output_descriptor = open(os.path.basename(book_file[20:-5]) + '.html', 'w')
-                output_descriptor.write('<meta charset="UTF-8"><style>body { font-family: sans-serif; }</style>')
+        if book_file != previous_book_file:
+            if output_descriptor is not None:
+                output_descriptor.close()
+            print('Processing {}...'.format(book_file))
+            output_descriptor = open(os.path.basename(book_file[20:-5]) + '.html', 'w')
+            output_descriptor.write('<meta charset="UTF-8"><style>body { font-family: sans-serif; }</style>')
 
-            chapter_file, start_container_path_point = start_container_path.split('#', 1)
-            _, end_container_path_point = end_container_path.split('#', 1)
+        chapter_file, start_container_path_point = start_container_path.split('#', 1)
+        _, end_container_path_point = end_container_path.split('#', 1)
 
-            try:
-                with ZipFile(VOLUME + book_file[20:]) as book_zip:
-                    with book_zip.open(chapter_file) as book_chapter:
-                        parser = MyHTMLParser(output_descriptor, start_container_path_point[6:-1], end_container_path_point[6:-1], text)
-                        parser.feed(book_chapter.read().decode('utf-8'))
-            except KeyError:
-                pass
+        try:
+            with ZipFile(VOLUME + book_file[20:]) as book_zip:
+                with book_zip.open(chapter_file) as book_chapter:
+                    parser = MyHTMLParser(output_descriptor, start_container_path_point[6:-1], end_container_path_point[6:-1], text)
+                    parser.feed(book_chapter.read().decode('utf-8'))
+        except KeyError:
+            pass
 
-            previous_book_file = book_file
+        previous_book_file = book_file
 
-        if output_descriptor is not None:
-            output_descriptor.close()
-    except:
-        if getattr(sys, 'frozen', False):
-            with open('kobo-bookmark-extractor-log.txt', 'w') as file:
-                file.write(str(sys.exc_info()))
-        else:
-            raise
+    if output_descriptor is not None:
+        output_descriptor.close()
