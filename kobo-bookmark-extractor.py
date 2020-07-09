@@ -9,8 +9,9 @@ VOLUME = '/Volumes/KOBOeReader/'
 
 
 class MyHTMLParser(HTMLParser):
-    def __init__(self, start, end, should_be):
+    def __init__(self, write_to, start, end, should_be):
         super().__init__()
+        self.__write_to = write_to
         self.__location = []
         self.__start_epubcti = start
         self.__end_epubcti = end
@@ -42,10 +43,13 @@ class MyHTMLParser(HTMLParser):
             self.__end_pos += int(self.__end_epubcti[len(anchor):])
             fragment = self.__scanned_data[self.__start_pos:self.__end_pos].decode('utf-8')
             assert re.sub(r'\s+', '', fragment) == re.sub(r'\s+', '', self.__should_be)
-            print(self.__scanned_data[:self.__start_pos].decode('utf-8'), end='')
-            print(colored(self.__scanned_data[self.__start_pos:self.__end_pos].decode('utf-8'), 'green'), end='')
-            print(self.__scanned_data[self.__end_pos:].decode('utf-8'))
-            print()
+            self.__write_to.write('<p>')
+            self.__write_to.write(self.__scanned_data[:self.__start_pos].decode('utf-8'))
+            self.__write_to.write('<strong><font color="green">')
+            self.__write_to.write(fragment)
+            self.__write_to.write('</font></strong>')
+            self.__write_to.write(self.__scanned_data[self.__end_pos:].decode('utf-8'))
+            self.__write_to.write('</p><hr/>')
         else:
             self.__end_pos = len(self.__scanned_data)
 
@@ -57,6 +61,7 @@ if __name__ == '__main__':
     cursor.execute('''SELECT ContentID, StartContainerPath, EndContainerPath, Text FROM Bookmark ORDER BY ContentId, DateModified DESC''')
 
     previous_book_file = None
+    output_descriptor = None
 
     for content_id, start_container_path, end_container_path, text in cursor:
         if not content_id.startswith('file:///mnt/onboard/'):
@@ -65,7 +70,11 @@ if __name__ == '__main__':
         book_file, _ = content_id.split('#', 1)
 
         if book_file != previous_book_file:
+            if output_descriptor is not None:
+                output_descriptor.close()
             print('Processing {}...'.format(book_file))
+            output_descriptor = open(VOLUME + book_file[20:-5] + '_bookmarks.html', 'w')
+            output_descriptor.write('<meta charset="UTF-8"><style>body { font-family: sans-serif; }</style>')
 
         chapter_file, start_container_path_point = start_container_path.split('#', 1)
         _, end_container_path_point = end_container_path.split('#', 1)
@@ -73,9 +82,13 @@ if __name__ == '__main__':
         try:
             with ZipFile(VOLUME + book_file[20:]) as book_zip:
                 with book_zip.open(chapter_file) as book_chapter:
-                    parser = MyHTMLParser(start_container_path_point[6:-1], end_container_path_point[6:-1], text)
+                    parser = MyHTMLParser(output_descriptor, start_container_path_point[6:-1], end_container_path_point[6:-1], text)
                     parser.feed(book_chapter.read().decode('utf-8'))
         except KeyError:
             pass
 
         previous_book_file = book_file
+
+    if output_descriptor is not None:
+        output_descriptor.close()
+
