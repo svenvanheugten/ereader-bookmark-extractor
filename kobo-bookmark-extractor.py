@@ -1,4 +1,5 @@
 import sqlite3
+import sys
 from zipfile import ZipFile
 from html.parser import HTMLParser
 from termcolor import colored
@@ -55,40 +56,44 @@ class MyHTMLParser(HTMLParser):
 
 
 if __name__ == '__main__':
-    db = sqlite3.connect(VOLUME + '.kobo/KoboReader.sqlite')
+    sys.stdout = open(VOLUME + 'kobo-bookmark-extractor-log.txt', 'w')
 
-    cursor = db.cursor()
-    cursor.execute('''SELECT ContentID, StartContainerPath, EndContainerPath, Text FROM Bookmark ORDER BY ContentId, DateModified DESC''')
+    try:
+        db = sqlite3.connect(VOLUME + '.kobo/KoboReader.sqlite')
 
-    previous_book_file = None
-    output_descriptor = None
+        cursor = db.cursor()
+        cursor.execute('''SELECT ContentID, StartContainerPath, EndContainerPath, Text FROM Bookmark ORDER BY ContentId, DateModified DESC''')
 
-    for content_id, start_container_path, end_container_path, text in cursor:
-        if not content_id.startswith('file:///mnt/onboard/'):
-            continue
+        previous_book_file = None
+        output_descriptor = None
 
-        book_file, _ = content_id.split('#', 1)
+        for content_id, start_container_path, end_container_path, text in cursor:
+            if not content_id.startswith('file:///mnt/onboard/'):
+                continue
 
-        if book_file != previous_book_file:
-            if output_descriptor is not None:
-                output_descriptor.close()
-            print('Processing {}...'.format(book_file))
-            output_descriptor = open(VOLUME + book_file[20:-5] + '_bookmarks.html', 'w')
-            output_descriptor.write('<meta charset="UTF-8"><style>body { font-family: sans-serif; }</style>')
+            book_file, _ = content_id.split('#', 1)
 
-        chapter_file, start_container_path_point = start_container_path.split('#', 1)
-        _, end_container_path_point = end_container_path.split('#', 1)
+            if book_file != previous_book_file:
+                if output_descriptor is not None:
+                    output_descriptor.close()
+                print('Processing {}...'.format(book_file))
+                output_descriptor = open(VOLUME + book_file[20:-5] + '_bookmarks.html', 'w')
+                output_descriptor.write('<meta charset="UTF-8"><style>body { font-family: sans-serif; }</style>')
 
-        try:
-            with ZipFile(VOLUME + book_file[20:]) as book_zip:
-                with book_zip.open(chapter_file) as book_chapter:
-                    parser = MyHTMLParser(output_descriptor, start_container_path_point[6:-1], end_container_path_point[6:-1], text)
-                    parser.feed(book_chapter.read().decode('utf-8'))
-        except KeyError:
-            pass
+            chapter_file, start_container_path_point = start_container_path.split('#', 1)
+            _, end_container_path_point = end_container_path.split('#', 1)
 
-        previous_book_file = book_file
+            try:
+                with ZipFile(VOLUME + book_file[20:]) as book_zip:
+                    with book_zip.open(chapter_file) as book_chapter:
+                        parser = MyHTMLParser(output_descriptor, start_container_path_point[6:-1], end_container_path_point[6:-1], text)
+                        parser.feed(book_chapter.read().decode('utf-8'))
+            except KeyError:
+                pass
 
-    if output_descriptor is not None:
-        output_descriptor.close()
+            previous_book_file = book_file
 
+        if output_descriptor is not None:
+            output_descriptor.close()
+    except:
+        print("Unexpected error:", sys.exc_info())
