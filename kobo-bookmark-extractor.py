@@ -16,11 +16,13 @@ class MyHTMLParser(HTMLParser):
     def __init__(self, start, end, should_be):
         super().__init__()
         self.__location = []
-        self.__start = start
-        self.__end = end
+        self.__start_epubcti = start
+        self.__end_epubcti = end
         self.__should_be = should_be
         self.__scanning = False
-        self.__scanned_data = ''
+        self.__scanned_data = b''
+        self.__start_pos = -1
+        self.__end_pos = -1
 
     def handle_starttag(self, tag, attrs):
         if len(self.__location) > 0:
@@ -34,18 +36,18 @@ class MyHTMLParser(HTMLParser):
         if len(self.__location) > 0:
             self.__location[-1] += 1
         anchor = '/1/' + '/'.join([str(x) for x in self.__location]) + ':'
-        if self.__start.startswith(anchor):
+        if self.__start_epubcti.startswith(anchor):
             self.__scanning = True
-        encoded_data = data.encode('utf-8')
+            self.__start_pos = int(self.__start_epubcti[len(anchor):])
         if self.__scanning:
-            begin = int(self.__start[len(anchor):]) if self.__start.startswith(anchor) else 0
-            end = int(self.__end[len(anchor):]) if self.__end.startswith(anchor) else None
-            fragment = encoded_data[begin:end].decode('utf-8')
-            self.__scanned_data += fragment
-        if self.__end.startswith(anchor):
+            self.__scanned_data += data.encode('utf-8')
+        if self.__end_epubcti.startswith(anchor):
             self.__scanning = False
-            print(self.__scanned_data)
-            assert re.sub(r'\s+', '', self.__scanned_data) == re.sub(r'\s+', '', self.__should_be)
+            self.__end_pos += int(self.__end_epubcti[len(anchor):])
+            fragment = self.__scanned_data[self.__start_pos:self.__end_pos].decode('utf-8')
+            assert re.sub(r'\s+', '', fragment) == re.sub(r'\s+', '', self.__should_be)
+        else:
+            self.__end_pos = len(self.__scanned_data)
 
 
 if __name__ == '__main__':
