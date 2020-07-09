@@ -1,8 +1,6 @@
 import sqlite3
-import sys
 from zipfile import ZipFile
 from html.parser import HTMLParser
-from termcolor import colored
 import re
 import os
 
