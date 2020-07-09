@@ -4,6 +4,7 @@ from zipfile import ZipFile
 from html.parser import HTMLParser
 from termcolor import colored
 import re
+import os
 
 
 VOLUME = '/Volumes/KOBOeReader/'
@@ -75,7 +76,7 @@ if __name__ == '__main__':
                 if output_descriptor is not None:
                     output_descriptor.close()
                 print('Processing {}...'.format(book_file))
-                output_descriptor = open(VOLUME + book_file[20:-5] + '_bookmarks.html', 'w')
+                output_descriptor = open(os.path.basename(book_file[20:-5]) + '.html', 'w')
                 output_descriptor.write('<meta charset="UTF-8"><style>body { font-family: sans-serif; }</style>')
 
             chapter_file, start_container_path_point = start_container_path.split('#', 1)
@@ -95,7 +96,7 @@ if __name__ == '__main__':
             output_descriptor.close()
     except:
         if getattr(sys, 'frozen', False):
-            with open(VOLUME + 'kobo-bookmark-extractor-log.txt', 'w') as file:
+            with open('kobo-bookmark-extractor-log.txt', 'w') as file:
                 file.write(str(sys.exc_info()))
         else:
             raise
