@@ -67,7 +67,8 @@ if __name__ == '__main__':
         if not content_id.startswith('file:///mnt/onboard/'):
             continue
 
-        book_file, _ = content_id.split('#', 1)
+        book_parts = content_id.split('#', 1)
+        book_file = book_parts[0]
 
         if book_file != previous_book_file:
             if output_descriptor is not None:
@@ -76,8 +77,12 @@ if __name__ == '__main__':
             output_descriptor = open(os.path.basename(book_file[20:-5]) + '.html', 'w')
             output_descriptor.write('<meta charset="UTF-8"><style>body { font-family: sans-serif; }</style>')
 
-        chapter_file, start_container_path_point = start_container_path.split('#', 1)
-        _, end_container_path_point = end_container_path.split('#', 1)
+        try:
+            chapter_file, start_container_path_point = start_container_path.split('#', 1)
+            _, end_container_path_point = end_container_path.split('#', 1)
+        except:
+            print("Failed getting chapter files from {}".format(start_container_path))
+            continue
 
         try:
             with ZipFile(VOLUME + book_file[20:]) as book_zip:
@@ -86,6 +91,8 @@ if __name__ == '__main__':
                     parser.feed(book_chapter.read().decode('utf-8'))
         except KeyError:
             pass
+        except NotADirectoryError as ex:
+            print("Failed opening non directory: '{}'".format(ex.filename))
 
         previous_book_file = book_file
 
