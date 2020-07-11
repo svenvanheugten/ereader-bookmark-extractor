@@ -77,19 +77,20 @@ if __name__ == '__main__':
         books_to_bookmarks.setdefault(book, []).append((start_container_path, end_container_path, text))
 
     for book, bookmarks in books_to_bookmarks.items():
+        print('Processing {}...'.format(book))
         with \
             ZipFile(os.path.join(args.volume, book)) as book_zip, \
-            open(os.path.join(args.destination, os.path.basename(book))[:-5] + '.html', 'w') as output:
+                open(os.path.join(args.destination, os.path.basename(book))[:-5] + '.html', 'w') as output:
             output.write('<meta charset="UTF-8"><style>body { font-family: sans-serif; }</style>')
 
             for (start_container_path, end_container_path, text) in bookmarks:
+                if text is None:
+                    continue
+
                 chapter_file, start_container_path_point = start_container_path.split('#', 1)
                 _, end_container_path_point = end_container_path.split('#', 1)
 
-                try:
-                        with book_zip.open(chapter_file) as book_chapter:
-                            parser = MyHTMLParser(output, start_container_path_point[6:-1],
-                                                  end_container_path_point[6:-1], text)
-                            parser.feed(book_chapter.read().decode('utf-8'))
-                except KeyError:
-                    pass
+                with book_zip.open(chapter_file) as book_chapter:
+                    parser = MyHTMLParser(output, start_container_path_point[6:-1],
+                                          end_container_path_point[6:-1], text)
+                    parser.feed(book_chapter.read().decode('utf-8'))
