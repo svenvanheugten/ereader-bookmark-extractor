@@ -67,35 +67,29 @@ if __name__ == '__main__':
                       FROM Bookmark
                       ORDER BY ContentId, DateModified DESC''')
 
-    previous_book_file = None
-    output_descriptor = None
+    books_to_bookmarks = {}
 
     for content_id, start_container_path, end_container_path, text in cursor:
         if not content_id.startswith('file:///mnt/onboard/'):
             continue
+        content_id_parts = content_id.split('#', 1)
+        book = content_id_parts[0][20:]
+        books_to_bookmarks.setdefault(book, []).append((start_container_path, end_container_path, text))
 
-        book_file, _ = content_id.split('#', 1)
+    for book, bookmarks in books_to_bookmarks.items():
+        with \
+            ZipFile(os.path.join(args.volume, book)) as book_zip, \
+            open(os.path.join(args.destination, os.path.basename(book))[:-5] + '.html', 'w') as output:
+            output.write('<meta charset="UTF-8"><style>body { font-family: sans-serif; }</style>')
 
-        if book_file != previous_book_file:
-            if output_descriptor is not None:
-                output_descriptor.close()
-            print('Processing {}...'.format(book_file))
-            output_descriptor = open(os.path.join(args.destination, os.path.basename(book_file[20:-5])) + '.html', 'w')
-            output_descriptor.write('<meta charset="UTF-8"><style>body { font-family: sans-serif; }</style>')
+            for (start_container_path, end_container_path, text) in bookmarks:
+                chapter_file, start_container_path_point = start_container_path.split('#', 1)
+                _, end_container_path_point = end_container_path.split('#', 1)
 
-        chapter_file, start_container_path_point = start_container_path.split('#', 1)
-        _, end_container_path_point = end_container_path.split('#', 1)
-
-        try:
-            with ZipFile(os.path.join(args.volume, book_file[20:])) as book_zip:
-                with book_zip.open(chapter_file) as book_chapter:
-                    parser = MyHTMLParser(output_descriptor, start_container_path_point[6:-1],
-                                          end_container_path_point[6:-1], text)
-                    parser.feed(book_chapter.read().decode('utf-8'))
-        except KeyError:
-            pass
-
-        previous_book_file = book_file
-
-    if output_descriptor is not None:
-        output_descriptor.close()
+                try:
+                        with book_zip.open(chapter_file) as book_chapter:
+                            parser = MyHTMLParser(output, start_container_path_point[6:-1],
+                                                  end_container_path_point[6:-1], text)
+                            parser.feed(book_chapter.read().decode('utf-8'))
+                except KeyError:
+                    pass
