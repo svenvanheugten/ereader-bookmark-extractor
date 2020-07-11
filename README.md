@@ -1,5 +1,7 @@
 ereader-bookmark-extractor
 ==========================
+Run
+---
 Run for Kobo devices:
 
 ```bash
