@@ -63,7 +63,9 @@ if __name__ == '__main__':
     db = sqlite3.connect(os.path.join(args.volume, '.kobo/KoboReader.sqlite'))
 
     cursor = db.cursor()
-    cursor.execute('''SELECT ContentID, StartContainerPath, EndContainerPath, Text FROM Bookmark ORDER BY ContentId, DateModified DESC''')
+    cursor.execute('''SELECT ContentID, StartContainerPath, EndContainerPath, Text
+                      FROM Bookmark
+                      ORDER BY ContentId, DateModified DESC''')
 
     previous_book_file = None
     output_descriptor = None
@@ -87,7 +89,8 @@ if __name__ == '__main__':
         try:
             with ZipFile(os.path.join(args.volume, book_file[20:])) as book_zip:
                 with book_zip.open(chapter_file) as book_chapter:
-                    parser = MyHTMLParser(output_descriptor, start_container_path_point[6:-1], end_container_path_point[6:-1], text)
+                    parser = MyHTMLParser(output_descriptor, start_container_path_point[6:-1],
+                                          end_container_path_point[6:-1], text)
                     parser.feed(book_chapter.read().decode('utf-8'))
         except KeyError:
             pass
