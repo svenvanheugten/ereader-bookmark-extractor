@@ -1,11 +1,9 @@
 import sqlite3
 from zipfile import ZipFile
 from html.parser import HTMLParser
+import argparse
 import re
 import os
-
-
-VOLUME = '/Volumes/KOBOeReader/'
 
 
 class MyHTMLParser(HTMLParser):
@@ -55,7 +53,14 @@ class MyHTMLParser(HTMLParser):
 
 
 if __name__ == '__main__':
-    db = sqlite3.connect(VOLUME + '.kobo/KoboReader.sqlite')
+    argparser = argparse.ArgumentParser()
+
+    argparser.add_argument('volume')
+    argparser.add_argument('destination')
+
+    args = argparser.parse_args()
+
+    db = sqlite3.connect(os.path.join(args.volume, '.kobo/KoboReader.sqlite'))
 
     cursor = db.cursor()
     cursor.execute('''SELECT ContentID, StartContainerPath, EndContainerPath, Text FROM Bookmark ORDER BY ContentId, DateModified DESC''')
@@ -73,14 +78,14 @@ if __name__ == '__main__':
             if output_descriptor is not None:
                 output_descriptor.close()
             print('Processing {}...'.format(book_file))
-            output_descriptor = open(os.path.basename(book_file[20:-5]) + '.html', 'w')
+            output_descriptor = open(os.path.join(args.destination, os.path.basename(book_file[20:-5])) + '.html', 'w')
             output_descriptor.write('<meta charset="UTF-8"><style>body { font-family: sans-serif; }</style>')
 
         chapter_file, start_container_path_point = start_container_path.split('#', 1)
         _, end_container_path_point = end_container_path.split('#', 1)
 
         try:
-            with ZipFile(VOLUME + book_file[20:]) as book_zip:
+            with ZipFile(os.path.join(args.volume, book_file[20:])) as book_zip:
                 with book_zip.open(chapter_file) as book_chapter:
                     parser = MyHTMLParser(output_descriptor, start_container_path_point[6:-1], end_container_path_point[6:-1], text)
                     parser.feed(book_chapter.read().decode('utf-8'))
