@@ -1,9 +1,9 @@
-kobo-bookmark-extractor
-=======================
-Run:
+ereader-bookmark-extractor
+==========================
+Run for Kobo devices:
 
 ```bash
-python3 kobo-bookmark-extractor.py /Volumes/KOBOeReader .
+python3 ereader-bookmark-extractor.py /Volumes/KOBOeReader .
 ```
 
 Build
