@@ -73,7 +73,7 @@ if __name__ == '__main__':
         if not content_id.startswith('file:///mnt/onboard/'):
             continue
         content_id_parts = content_id.split('#', 1)
-        book = content_id_parts[0][20:]
+        book = content_id_parts[0][len('file:///mnt/onboard/'):]
         books_to_bookmarks.setdefault(book, []).append((start_container_path, end_container_path, text))
 
     for book, bookmarks in books_to_bookmarks.items():
