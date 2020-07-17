@@ -91,7 +91,7 @@ if __name__ == '__main__':
             continue
         with ZipFile(path) as book_zip:
             print('Processing {}...'.format(book))
-            output_path = os.path.splitext(os.path.join(args.destination, os.path.basename(book)))[0] + '.html'
+            output_path = os.path.join(args.destination, os.path.splitext(os.path.basename(book))[0] + '.html')
             with open(output_path, 'w') as output:
                 output.write('<meta charset="UTF-8"><style>body { font-family: sans-serif; }</style>')
 
