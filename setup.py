@@ -2,7 +2,8 @@ from setuptools import setup
 
 
 setup(
-    app=['ereader-bookmark-extractor.py'],
+    app=['gui.py'],
+    name='ereader-bookmark-extractor',
     data_files=[],
     options={'py2app': {}},
     setup_requires=['py2app']
