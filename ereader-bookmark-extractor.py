@@ -73,7 +73,7 @@ if __name__ == '__main__':
     cursor = db.cursor()
     cursor.execute('''SELECT ContentID, StartContainerPath, EndContainerPath, Text
                       FROM Bookmark
-                      ORDER BY ContentId, DateModified DESC''')
+                      ORDER BY DateModified DESC''')
 
     books_to_bookmarks = {}
 
