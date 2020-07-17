@@ -1,5 +1,5 @@
 import sqlite3
-from zipfile import ZipFile
+from zipfile import ZipFile, is_zipfile
 from html.parser import HTMLParser
 import argparse
 import re
@@ -52,6 +52,14 @@ class MyHTMLParser(HTMLParser):
             self.__end_pos = len(self.__scanned_data)
 
 
+def is_epub(path):
+    if not is_zipfile(path):
+        return False
+    with ZipFile(path) as zipfile:
+        with zipfile.open('mimetype') as f:
+            return f.read() == b'application/epub+zip'
+
+
 if __name__ == '__main__':
     argparser = argparse.ArgumentParser()
 
@@ -77,20 +85,24 @@ if __name__ == '__main__':
         books_to_bookmarks.setdefault(book, []).append((start_container_path, end_container_path, text))
 
     for book, bookmarks in books_to_bookmarks.items():
-        print('Processing {}...'.format(book))
-        with \
-            ZipFile(os.path.join(args.volume, book)) as book_zip, \
-                open(os.path.join(args.destination, os.path.basename(book))[:-5] + '.html', 'w') as output:
-            output.write('<meta charset="UTF-8"><style>body { font-family: sans-serif; }</style>')
+        path = os.path.join(args.volume, book)
+        if not is_epub(path):
+            print('Skipping {} because it is not an epub'.format(book))
+            continue
+        with ZipFile(path) as book_zip:
+            print('Processing {}...'.format(book))
+            output_path = os.path.splitext(os.path.join(args.destination, os.path.basename(book)))[0] + '.html'
+            with open(output_path, 'w') as output:
+                output.write('<meta charset="UTF-8"><style>body { font-family: sans-serif; }</style>')
 
-            for (start_container_path, end_container_path, text) in bookmarks:
-                if text is None:
-                    continue
+                for (start_container_path, end_container_path, text) in bookmarks:
+                    if text is None:
+                        continue
 
-                chapter_file, start_container_path_point = start_container_path.split('#', 1)
-                _, end_container_path_point = end_container_path.split('#', 1)
+                    chapter_file, start_container_path_point = start_container_path.split('#', 1)
+                    _, end_container_path_point = end_container_path.split('#', 1)
 
-                with book_zip.open(chapter_file) as book_chapter:
-                    parser = MyHTMLParser(output, start_container_path_point[6:-1],
-                                          end_container_path_point[6:-1], text)
-                    parser.feed(book_chapter.read().decode('utf-8'))
+                    with book_zip.open(chapter_file) as book_chapter:
+                        parser = MyHTMLParser(output, start_container_path_point[6:-1],
+                                              end_container_path_point[6:-1], text)
+                        parser.feed(book_chapter.read().decode('utf-8'))
