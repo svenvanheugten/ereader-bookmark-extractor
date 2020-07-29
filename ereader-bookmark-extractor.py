@@ -39,17 +39,23 @@ class MyHTMLParser(HTMLParser):
         if self.__end_epubcti.startswith(anchor):
             self.__scanning = False
             self.__end_pos += int(self.__end_epubcti[len(anchor):])
-            fragment = self.__scanned_data[self.__start_pos:self.__end_pos].decode('utf-8')
-            assert re.sub(r'\s+', '', fragment) == re.sub(r'\s+', '', self.__should_be)
+            (before, highlight, after) = self.get_paragraph()
             self.__write_to.write('<p>')
-            self.__write_to.write(self.__scanned_data[:self.__start_pos].decode('utf-8'))
+            self.__write_to.write(before)
             self.__write_to.write('<strong><font color="green">')
-            self.__write_to.write(fragment)
+            self.__write_to.write(highlight)
             self.__write_to.write('</font></strong>')
-            self.__write_to.write(self.__scanned_data[self.__end_pos:].decode('utf-8'))
+            self.__write_to.write(after)
             self.__write_to.write('</p><hr/>')
         else:
             self.__end_pos = len(self.__scanned_data)
+
+    def get_paragraph(self):
+        before = self.__scanned_data[:self.__start_pos].decode('utf-8')
+        highlight = self.__scanned_data[self.__start_pos:self.__end_pos].decode('utf-8')
+        after = self.__scanned_data[self.__end_pos:].decode('utf-8')
+        assert re.sub(r'\s+', '', highlight) == re.sub(r'\s+', '', self.__should_be)
+        return (before, highlight, after)
 
 
 def is_epub(path):
