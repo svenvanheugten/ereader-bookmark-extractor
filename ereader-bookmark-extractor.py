@@ -56,7 +56,6 @@ class MyHTMLParser(HTMLParser):
         paragraph = self.get_paragraph()
         (h_start, h_end) = self.get_highlight_interval()
         (c_start, c_end) = self.get_context_interval()
-        assert re.sub(r'\s+', '', paragraph[h_start:h_end]) == re.sub(r'\s+', '', self.__should_be)
         if self.__output_format == 'html':
             self.__write_to.write('<p>')
             self.__write_to.write(paragraph[c_start:h_start])
@@ -78,8 +77,15 @@ class MyHTMLParser(HTMLParser):
         return self.__scanned_data.decode('utf-8')
 
     def get_highlight_interval(self):
+        paragraph = self.get_paragraph()
         start = len(self.__scanned_data[:self.__start_pos].decode('utf-8'))
         end = len(self.__scanned_data[:self.__end_pos].decode('utf-8'))
+        highlight = paragraph[start:end]
+        assert re.sub(r'\s+', '', highlight) == re.sub(r'\s+', '', self.__should_be)
+        start += len(highlight) - len(str.lstrip(highlight))
+        end += len(highlight) - len(str.rstrip(highlight))
+        if highlight.strip()[-1] in {'.', ',', '?', '!'}:
+            end -= 1
         return (start, end)
 
     def get_context_interval(self):
