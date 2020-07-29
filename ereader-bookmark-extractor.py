@@ -1,14 +1,22 @@
 import sqlite3
 from zipfile import ZipFile, is_zipfile
 from html.parser import HTMLParser
+from more_itertools import pairwise
+from itertools import chain
+import spacy.lang.en
 import argparse
 import re
 import os
 
 
+nlp = spacy.lang.en.English()
+nlp.add_pipe(nlp.create_pipe('sentencizer'))
+
+
 class MyHTMLParser(HTMLParser):
-    def __init__(self, write_to, start, end, should_be):
+    def __init__(self, context, write_to, start, end, should_be):
         super().__init__()
+        self.__context = context
         self.__write_to = write_to
         self.__location = []
         self.__start_epubcti = start
@@ -39,23 +47,45 @@ class MyHTMLParser(HTMLParser):
         if self.__end_epubcti.startswith(anchor):
             self.__scanning = False
             self.__end_pos += int(self.__end_epubcti[len(anchor):])
-            (before, highlight, after) = self.get_paragraph()
-            self.__write_to.write('<p>')
-            self.__write_to.write(before)
-            self.__write_to.write('<strong><font color="green">')
-            self.__write_to.write(highlight)
-            self.__write_to.write('</font></strong>')
-            self.__write_to.write(after)
-            self.__write_to.write('</p><hr/>')
+            self.write()
         else:
             self.__end_pos = len(self.__scanned_data)
 
+    def write(self):
+        paragraph = self.get_paragraph()
+        (h_start, h_end) = self.get_highlight_interval()
+        (c_start, c_end) = self.get_context_interval()
+        assert re.sub(r'\s+', '', paragraph[h_start:h_end]) == re.sub(r'\s+', '', self.__should_be)
+        self.__write_to.write('<p>')
+        self.__write_to.write(paragraph[c_start:h_start])
+        self.__write_to.write('<strong><font color="green">')
+        self.__write_to.write(paragraph[h_start:h_end])
+        self.__write_to.write('</font></strong>')
+        self.__write_to.write(paragraph[h_end:c_end])
+        self.__write_to.write('</p><hr/>')
+
     def get_paragraph(self):
-        before = self.__scanned_data[:self.__start_pos].decode('utf-8')
-        highlight = self.__scanned_data[self.__start_pos:self.__end_pos].decode('utf-8')
-        after = self.__scanned_data[self.__end_pos:].decode('utf-8')
-        assert re.sub(r'\s+', '', highlight) == re.sub(r'\s+', '', self.__should_be)
-        return (before, highlight, after)
+        return self.__scanned_data.decode('utf-8')
+
+    def get_highlight_interval(self):
+        start = len(self.__scanned_data[:self.__start_pos].decode('utf-8'))
+        end = len(self.__scanned_data[:self.__end_pos].decode('utf-8'))
+        return (start, end)
+
+    def get_context_interval(self):
+        paragraph = self.get_paragraph()
+        if self.__context == 'sentence':
+            highlight_interval = self.get_highlight_interval()
+            sentences = list(nlp(paragraph).sents)
+            sentence_indexes = chain(map(lambda sentence: sentence[0].idx, sentences), [len(paragraph)])
+            sentence_intervals = pairwise(sentence_indexes)
+            surrounding_sentence_intervals = list(filter(
+                lambda i: highlight_interval[0] >= i[0] and highlight_interval[0] < i[1],
+                sentence_intervals
+            ))
+            return (surrounding_sentence_intervals[0][0], surrounding_sentence_intervals[-1][1])
+        elif self.__context == 'paragraph':
+            return (0, len(paragraph))
 
 
 def is_epub(path):
@@ -71,6 +101,7 @@ if __name__ == '__main__':
 
     argparser.add_argument('volume')
     argparser.add_argument('destination')
+    argparser.add_argument('--context', choices=['sentence', 'paragraph'], required=True)
 
     args = argparser.parse_args()
 
@@ -109,6 +140,6 @@ if __name__ == '__main__':
                     _, end_container_path_point = end_container_path.split('#', 1)
 
                     with book_zip.open(chapter_file) as book_chapter:
-                        parser = MyHTMLParser(output, start_container_path_point[6:-1],
+                        parser = MyHTMLParser(args.context, output, start_container_path_point[6:-1],
                                               end_container_path_point[6:-1], text)
                         parser.feed(book_chapter.read().decode('utf-8'))
