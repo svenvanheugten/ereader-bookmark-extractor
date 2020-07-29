@@ -14,9 +14,10 @@ nlp.add_pipe(nlp.create_pipe('sentencizer'))
 
 
 class MyHTMLParser(HTMLParser):
-    def __init__(self, context, write_to, start, end, should_be):
+    def __init__(self, context, output_format, write_to, start, end, should_be):
         super().__init__()
         self.__context = context
+        self.__output_format = output_format
         self.__write_to = write_to
         self.__location = []
         self.__start_epubcti = start
@@ -55,21 +56,36 @@ class MyHTMLParser(HTMLParser):
         paragraph = self.get_paragraph()
         (h_start, h_end) = self.get_highlight_interval()
         (c_start, c_end) = self.get_context_interval()
-        assert re.sub(r'\s+', '', paragraph[h_start:h_end]) == re.sub(r'\s+', '', self.__should_be)
-        self.__write_to.write('<p>')
-        self.__write_to.write(paragraph[c_start:h_start])
-        self.__write_to.write('<strong><font color="green">')
-        self.__write_to.write(paragraph[h_start:h_end])
-        self.__write_to.write('</font></strong>')
-        self.__write_to.write(paragraph[h_end:c_end])
-        self.__write_to.write('</p><hr/>')
+        if self.__output_format == 'html':
+            self.__write_to.write('<p>')
+            self.__write_to.write(paragraph[c_start:h_start])
+            self.__write_to.write('<strong><font color="green">')
+            self.__write_to.write(paragraph[h_start:h_end])
+            self.__write_to.write('</font></strong>')
+            self.__write_to.write(paragraph[h_end:c_end])
+            self.__write_to.write('</p><hr/>')
+        else:
+            self.__write_to.write(
+                '{}[{}]{}\n\n'.format(
+                    paragraph[c_start:h_start],
+                    paragraph[h_start:h_end],
+                    paragraph[h_end:c_end]
+                )
+            )
 
     def get_paragraph(self):
         return self.__scanned_data.decode('utf-8')
 
     def get_highlight_interval(self):
+        paragraph = self.get_paragraph()
         start = len(self.__scanned_data[:self.__start_pos].decode('utf-8'))
         end = len(self.__scanned_data[:self.__end_pos].decode('utf-8'))
+        highlight = paragraph[start:end]
+        assert re.sub(r'\s+', '', highlight) == re.sub(r'\s+', '', self.__should_be)
+        start += len(highlight) - len(str.lstrip(highlight))
+        end += len(highlight) - len(str.rstrip(highlight))
+        if highlight.strip()[-1] in {'.', ',', '?', '!'}:
+            end -= 1
         return (start, end)
 
     def get_context_interval(self):
@@ -101,7 +117,8 @@ if __name__ == '__main__':
 
     argparser.add_argument('volume')
     argparser.add_argument('destination')
-    argparser.add_argument('--context', choices=['sentence', 'paragraph'], required=True)
+    argparser.add_argument('--context', choices=['sentence', 'paragraph'], default='paragraph')
+    argparser.add_argument('--output-format', choices=['txt', 'html'], default='html')
 
     args = argparser.parse_args()
 
@@ -128,9 +145,11 @@ if __name__ == '__main__':
             continue
         with ZipFile(path) as book_zip:
             print('Processing {}...'.format(book))
-            output_path = os.path.join(args.destination, os.path.splitext(os.path.basename(book))[0] + '.html')
+            output_file = os.path.splitext(os.path.basename(book))[0] + '.' + args.output_format
+            output_path = os.path.join(args.destination, output_file)
             with open(output_path, 'w') as output:
-                output.write('<meta charset="UTF-8"><style>body { font-family: sans-serif; }</style>')
+                if args.output_format == 'html':
+                    output.write('<meta charset="UTF-8"><style>body { font-family: sans-serif; }</style>')
 
                 for (start_container_path, end_container_path, text) in bookmarks:
                     if text is None:
@@ -140,6 +159,7 @@ if __name__ == '__main__':
                     _, end_container_path_point = end_container_path.split('#', 1)
 
                     with book_zip.open(chapter_file) as book_chapter:
-                        parser = MyHTMLParser(args.context, output, start_container_path_point[6:-1],
-                                              end_container_path_point[6:-1], text)
+                        parser = MyHTMLParser(args.context, args.output_format, output,
+                                              start_container_path_point[6:-1], end_container_path_point[6:-1],
+                                              text)
                         parser.feed(book_chapter.read().decode('utf-8'))
