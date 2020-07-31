@@ -60,7 +60,7 @@ class MyHTMLParser(HTMLParser):
             self.__write_to.write('<p>')
             self.__write_to.write(paragraph[c_start:h_start].lstrip())
             self.__write_to.write('<strong><font color="green">')
-            self.__write_to.write(paragraph[h_start:h_end])
+            self.__write_to.write(paragraph[h_start:h_end].replace('\n', ' '))
             self.__write_to.write('</font></strong>')
             self.__write_to.write(paragraph[h_end:c_end].rstrip())
             self.__write_to.write('</p><hr/>')
@@ -68,7 +68,7 @@ class MyHTMLParser(HTMLParser):
             self.__write_to.write(
                 '{}[{}]{}\n\n'.format(
                     paragraph[c_start:h_start].lstrip(),
-                    paragraph[h_start:h_end],
+                    paragraph[h_start:h_end].replace('\n', ' '),
                     paragraph[h_end:c_end].rstrip()
                 )
             )
