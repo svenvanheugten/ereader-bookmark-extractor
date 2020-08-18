@@ -93,8 +93,8 @@ def extract(volume, destination):
                         if text is None:
                             continue
 
-                        chapter_file, start_container_path_point = start_container_path.split('#', 1)
-                        _, end_container_path_point = end_container_path.split('#', 1)
+                        chapter_file, start_container_path_point = start_container_path.split('!!', 1)
+                        _, end_container_path_point = end_container_path.split('!!', 1)
 
                         with book_zip.open(chapter_file) as book_chapter:
                             parser = MyHTMLParser(output, start_container_path_point[6:-1],
