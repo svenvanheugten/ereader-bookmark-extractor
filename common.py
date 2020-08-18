@@ -10,9 +10,9 @@ class MyHTMLParser(HTMLParser):
     def __init__(self, write_to, start, end, should_be):
         super().__init__()
         self.__write_to = write_to
-        self.__location = []
-        self.__start_epubcti = start
-        self.__end_epubcti = end
+        self.__location = None
+        self.__start = start
+        self.__end = end
         self.__should_be = should_be
         self.__scanning = False
         self.__scanned_data = b''
@@ -20,25 +20,23 @@ class MyHTMLParser(HTMLParser):
         self.__end_pos = -1
 
     def handle_starttag(self, tag, attrs):
-        if len(self.__location) > 0:
-            self.__location[-1] += 1
-        self.__location.append(0)
+        if tag == 'span' and ('class', 'koboSpan') in attrs:
+            id_attr = [a[1] for a in attrs if a[0] == 'id'][0]
+            self.__location = '{}#{}'.format(tag, id_attr)
 
     def handle_endtag(self, tag):
-        self.__location.pop()
+        if tag == 'span':
+            self.__location = None
 
     def handle_data(self, data):
-        if len(self.__location) > 0:
-            self.__location[-1] += 1
-        anchor = '/1/' + '/'.join([str(x) for x in self.__location]) + ':'
-        if self.__start_epubcti.startswith(anchor):
+        if self.__location == self.__start[0]:
             self.__scanning = True
-            self.__start_pos = int(self.__start_epubcti[len(anchor):])
+            self.__start_pos = self.__start[1]
         if self.__scanning:
             self.__scanned_data += data.encode('utf-8')
-        if self.__end_epubcti.startswith(anchor):
+        if self.__location == self.__end[0]:
             self.__scanning = False
-            self.__end_pos += int(self.__end_epubcti[len(anchor):])
+            self.__end_pos += self.__end[1]
             fragment = self.__scanned_data[self.__start_pos:self.__end_pos].decode('utf-8')
             assert re.sub(r'\s+', '', fragment) == re.sub(r'\s+', '', self.__should_be)
             self.__write_to.write('<p>')
@@ -64,18 +62,19 @@ def extract(volume, destination):
     db = sqlite3.connect(os.path.join(volume, '.kobo/KoboReader.sqlite'))
 
     cursor = db.cursor()
-    cursor.execute('''SELECT ContentID, StartContainerPath, EndContainerPath, Text
+    cursor.execute('''SELECT ContentID, StartContainerPath, StartOffset, EndContainerPath, EndOffset, Text
                       FROM Bookmark
                       ORDER BY DateModified DESC''')
 
     books_to_bookmarks = {}
 
-    for content_id, start_container_path, end_container_path, text in cursor:
+    for content_id, start_container_path, start_offset, end_container_path, end_offset, text in cursor:
         if not content_id.startswith('/mnt/onboard/'):
             continue
-        content_id_parts = content_id.split('#', 1)
+        content_id_parts = content_id.split('!!', 1)
         book = content_id_parts[0][len('/mnt/onboard/'):]
-        books_to_bookmarks.setdefault(book, []).append((start_container_path, end_container_path, text))
+        chapter_file = content_id_parts[1]
+        books_to_bookmarks.setdefault(book, []).append((chapter_file, start_container_path, start_offset, end_container_path, end_offset, text))
 
     for book, bookmarks in books_to_bookmarks.items():
         path = os.path.join(volume, book)
@@ -88,17 +87,13 @@ def extract(volume, destination):
             with open(output_path, 'w') as output:
                 output.write('<meta charset="UTF-8"><style>body { font-family: sans-serif; }</style>')
 
-                for (start_container_path, end_container_path, text) in bookmarks:
+                for (chapter_file, start_container_path, start_offset, end_container_path, end_offset, text) in bookmarks:
                     try:
                         if text is None:
                             continue
 
-                        chapter_file, start_container_path_point = start_container_path.split('!!', 1)
-                        _, end_container_path_point = end_container_path.split('!!', 1)
-
                         with book_zip.open(chapter_file) as book_chapter:
-                            parser = MyHTMLParser(output, start_container_path_point[6:-1],
-                                                  end_container_path_point[6:-1], text)
+                            parser = MyHTMLParser(output, (start_container_path.replace('\\', ''), int(start_offset)), (end_container_path.replace('\\', ''), int(end_offset)), text)
                             parser.feed(book_chapter.read().decode('utf-8'))
                     except:  # noqa: E722
                         logging.exception('Unable to parse {}'.format((path, start_container_path,
