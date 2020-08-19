@@ -74,7 +74,8 @@ def extract(volume, destination):
             continue
         content_id_parts = content_id.split('!!', 1)
         book = content_id_parts[0][len('/mnt/onboard/'):]
-        chapter_file = content_id_parts[1]
+        chapter_file_parts = content_id_parts[1].split('#', 1)
+        chapter_file = chapter_file_parts[0]
         books_to_bookmarks.setdefault(book, []).append((chapter_file, start_container_path, start_offset, end_container_path, end_offset, text))
 
     for book, bookmarks in books_to_bookmarks.items():
