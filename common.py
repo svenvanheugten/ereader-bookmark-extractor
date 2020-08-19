@@ -37,15 +37,15 @@ class MyHTMLParser(HTMLParser):
         if self.__location == self.__end[0]:
             self.__scanning = False
             self.__end_pos += self.__end[1]
-            fragment = self.__scanned_data[self.__start_pos:self.__end_pos].decode('utf-8')
+            fragment = self.__scanned_data.decode('utf-8')[self.__start_pos:self.__end_pos]
             assert re.sub(r'\s+', '', fragment) == re.sub(r'\s+', '', self.__should_be), \
                 '"{}"[{}:{}] != {}'.format(self.__scanned_data.decode('utf-8'), self.__start_pos, self.__end_pos, self.__should_be)
             self.__write_to.write('<p>')
-            self.__write_to.write(self.__scanned_data[:self.__start_pos].decode('utf-8'))
+            self.__write_to.write(self.__scanned_data.decode('utf-8')[:self.__start_pos])
             self.__write_to.write('<strong><font color="green">')
             self.__write_to.write(fragment)
             self.__write_to.write('</font></strong>')
-            self.__write_to.write(self.__scanned_data[self.__end_pos:].decode('utf-8'))
+            self.__write_to.write(self.__scanned_data.decode('utf-8')[self.__end_pos:])
             self.__write_to.write('</p><hr/>')
         else:
             self.__end_pos = len(self.__scanned_data)
