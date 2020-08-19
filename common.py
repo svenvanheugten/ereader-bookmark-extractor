@@ -15,7 +15,7 @@ class MyHTMLParser(HTMLParser):
         self.__end = end
         self.__should_be = should_be
         self.__scanning = False
-        self.__scanned_data = b''
+        self.__scanned_data = ''
         self.__start_pos = -1
         self.__end_pos = -1
 
@@ -33,19 +33,19 @@ class MyHTMLParser(HTMLParser):
             self.__scanning = True
             self.__start_pos = self.__start[1]
         if self.__scanning:
-            self.__scanned_data += data.encode('utf-8')
+            self.__scanned_data += data
         if self.__location == self.__end[0]:
             self.__scanning = False
             self.__end_pos += self.__end[1]
-            fragment = self.__scanned_data.decode('utf-8')[self.__start_pos:self.__end_pos]
+            fragment = self.__scanned_data[self.__start_pos:self.__end_pos]
             assert re.sub(r'\s+', '', fragment) == re.sub(r'\s+', '', self.__should_be), \
-                '"{}"[{}:{}] != {}'.format(self.__scanned_data.decode('utf-8'), self.__start_pos, self.__end_pos, self.__should_be)
+                '"{}"[{}:{}] != {}'.format(self.__scanned_data, self.__start_pos, self.__end_pos, self.__should_be)
             self.__write_to.write('<p>')
-            self.__write_to.write(self.__scanned_data.decode('utf-8')[:self.__start_pos])
+            self.__write_to.write(self.__scanned_data[:self.__start_pos])
             self.__write_to.write('<strong><font color="green">')
             self.__write_to.write(fragment)
             self.__write_to.write('</font></strong>')
-            self.__write_to.write(self.__scanned_data.decode('utf-8')[self.__end_pos:])
+            self.__write_to.write(self.__scanned_data[self.__end_pos:])
             self.__write_to.write('</p><hr/>')
         else:
             self.__end_pos = len(self.__scanned_data)
