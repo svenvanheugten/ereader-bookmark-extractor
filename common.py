@@ -38,7 +38,8 @@ class MyHTMLParser(HTMLParser):
             self.__scanning = False
             self.__end_pos += self.__end[1]
             fragment = self.__scanned_data[self.__start_pos:self.__end_pos].decode('utf-8')
-            assert re.sub(r'\s+', '', fragment) == re.sub(r'\s+', '', self.__should_be)
+            assert re.sub(r'\s+', '', fragment) == re.sub(r'\s+', '', self.__should_be), \
+                '"{}"[{}:{}] != {}'.format(self.__scanned_data.decode('utf-8'), self.__start_pos, self.__end_pos, self.__should_be)
             self.__write_to.write('<p>')
             self.__write_to.write(self.__scanned_data[:self.__start_pos].decode('utf-8'))
             self.__write_to.write('<strong><font color="green">')
@@ -96,7 +97,7 @@ def extract(volume, destination):
                             parser = MyHTMLParser(output, (start_container_path.replace('\\', ''), int(start_offset)), (end_container_path.replace('\\', ''), int(end_offset)), text)
                             parser.feed(book_chapter.read().decode('utf-8'))
                     except:  # noqa: E722
-                        logging.exception('Unable to parse {}'.format((path, start_container_path,
-                                                                       end_container_path, text)))
+                        logging.exception('Unable to parse {}'.format((path, start_container_path, start_offset,
+                                                                       end_container_path, end_offset, text)))
 
     print('Done.')
