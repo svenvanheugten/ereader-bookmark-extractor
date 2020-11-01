@@ -89,6 +89,58 @@ class MyHTMLParser(HTMLParser):
             return (0, len(paragraph))
 
 
+class TextOutputWriter:
+    def __init__(self, destination):
+        self.__destination = destination
+        self.__outputs = {}
+
+    def write(self, book_name, lhs, highlight, rhs):
+        output = self.__outputs.get(book_name, None)
+        if output is None:
+            output = self.__outputs[book_name] = open(os.path.join(self.__destination, book_name + '.txt'), 'w')
+        output.write('{}[{}]{}\n\n'.format(lhs, highlight, rhs))
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, type, value, traceback):
+        for output in self.__outputs.values():
+            output.close()
+
+
+class HTMLOutputWriter:
+    def __init__(self, destination):
+        self.__destination = destination
+        self.__outputs = {}
+
+    def write(self, book_name, lhs, highlight, rhs):
+        output = self.__outputs.get(book_name, None)
+        if output is None:
+            output = self.__outputs[book_name] = open(os.path.join(self.__destination, book_name + '.html'), 'w')
+            output.write('<meta charset="UTF-8"><style>body { font-family: sans-serif; }</style>')
+        output.write('<p>')
+        output.write(parser.lhs)
+        output.write('<strong><font color="green">')
+        output.write(parser.highlight)
+        output.write('</font></strong>')
+        output.write(parser.rhs)
+        output.write('</p><hr/>')
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, type, value, traceback):
+        for output in self.__outputs.values():
+            output.close()
+
+
+def get_output_writer(output_format, destination):
+    if output_format == 'txt':
+        return TextOutputWriter(destination)
+    elif output_format == 'html':
+        return HTMLOutputWriter(destination)
+
+
 def is_epub(path):
     if not is_zipfile(path):
         return False
@@ -123,19 +175,15 @@ if __name__ == '__main__':
         book = content_id_parts[0][len('file:///mnt/onboard/'):]
         books_to_bookmarks.setdefault(book, []).append((start_container_path, end_container_path, text))
 
-    for book, bookmarks in books_to_bookmarks.items():
-        path = os.path.join(args.volume, book)
-        if not is_epub(path):
-            print('Skipping {} because it is not an epub'.format(book))
-            continue
-        with ZipFile(path) as book_zip:
-            print('Processing {}...'.format(book))
-            output_file = os.path.splitext(os.path.basename(book))[0] + '.' + args.output_format
-            output_path = os.path.join(args.destination, output_file)
-            with open(output_path, 'w') as output:
-                if args.output_format == 'html':
-                    output.write('<meta charset="UTF-8"><style>body { font-family: sans-serif; }</style>')
-
+    with get_output_writer(args.output_format, args.destination) as output_writer:
+        for book, bookmarks in books_to_bookmarks.items():
+            path = os.path.join(args.volume, book)
+            if not is_epub(path):
+                print('Skipping {} because it is not an epub'.format(book))
+                continue
+            with ZipFile(path) as book_zip:
+                print('Processing {}...'.format(book))
+                book_name = os.path.splitext(os.path.basename(book))[0]
                 for (start_container_path, end_container_path, text) in bookmarks:
                     if text is None:
                         continue
@@ -147,13 +195,4 @@ if __name__ == '__main__':
                         parser = MyHTMLParser(args.context, start_container_path_point[6:-1],
                                               end_container_path_point[6:-1], text)
                         parser.feed(book_chapter.read().decode('utf-8'))
-                        if args.output_format == 'html':
-                            output.write('<p>')
-                            output.write(parser.lhs)
-                            output.write('<strong><font color="green">')
-                            output.write(parser.highlight)
-                            output.write('</font></strong>')
-                            output.write(parser.rhs)
-                            output.write('</p><hr/>')
-                        else:
-                            output.write('{}[{}]{}\n\n'.format(parser.lhs, parser.highlight, parser.rhs))
+                        output_writer.write(book_name, parser.lhs, parser.highlight, parser.rhs)
