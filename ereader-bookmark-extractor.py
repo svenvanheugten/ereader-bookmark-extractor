@@ -5,6 +5,7 @@ from more_itertools import pairwise
 from itertools import chain
 import spacy.lang.en
 import argparse
+import csv
 import re
 import os
 
@@ -134,11 +135,32 @@ class HTMLOutputWriter:
             output.close()
 
 
+class CsvOutputWriter:
+    def __init__(self, destination):
+        self.__output = open(destination, 'w')
+        self.__csv_writer = csv.DictWriter(self.__output, fieldnames=['Book', 'Bookmark'])
+        self.__csv_writer.writeheader()
+
+    def write(self, book_name, lhs, highlight, rhs):
+        self.__csv_writer.writerow({
+            'Book': book_name,
+            'Bookmark': '{}[{}]{}'.format(lhs, highlight, rhs)
+        })
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, type, value, traceback):
+        self.__output.close()
+
+
 def get_output_writer(output_format, destination):
     if output_format == 'txt':
         return TextOutputWriter(destination)
     elif output_format == 'html':
         return HTMLOutputWriter(destination)
+    elif output_format == 'csv':
+        return CsvOutputWriter(destination)
 
 
 def is_epub(path):
@@ -155,7 +177,7 @@ if __name__ == '__main__':
     argparser.add_argument('volume')
     argparser.add_argument('destination')
     argparser.add_argument('--context', choices=['sentence', 'paragraph'], default='paragraph')
-    argparser.add_argument('--output-format', choices=['txt', 'html'], default='html')
+    argparser.add_argument('--output-format', choices=['txt', 'html', 'csv'], default='html')
 
     args = argparser.parse_args()
 
