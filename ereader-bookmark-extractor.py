@@ -5,6 +5,7 @@ from more_itertools import pairwise
 from itertools import chain
 import spacy.lang.en
 import argparse
+import sys
 import csv
 import re
 import os
@@ -95,7 +96,7 @@ class TextOutputWriter:
         self.__destination = destination
         self.__outputs = {}
 
-    def write(self, book_name, lhs, highlight, rhs):
+    def write(self, bookmark_id, book_name, lhs, highlight, rhs):
         output = self.__outputs.get(book_name, None)
         if output is None:
             output = self.__outputs[book_name] = open(os.path.join(self.__destination, book_name + '.txt'), 'w')
@@ -114,7 +115,7 @@ class HTMLOutputWriter:
         self.__destination = destination
         self.__outputs = {}
 
-    def write(self, book_name, lhs, highlight, rhs):
+    def write(self, bookmark_id, book_name, lhs, highlight, rhs):
         output = self.__outputs.get(book_name, None)
         if output is None:
             output = self.__outputs[book_name] = open(os.path.join(self.__destination, book_name + '.html'), 'w')
@@ -137,12 +138,13 @@ class HTMLOutputWriter:
 
 class CsvOutputWriter:
     def __init__(self, destination):
-        self.__output = open(destination, 'w')
-        self.__csv_writer = csv.DictWriter(self.__output, fieldnames=['Book', 'Bookmark'])
+        self.__output = open(destination, 'w') if destination != '-' else sys.stdout
+        self.__csv_writer = csv.DictWriter(self.__output, fieldnames=['ID', 'Book', 'Bookmark'])
         self.__csv_writer.writeheader()
 
-    def write(self, book_name, lhs, highlight, rhs):
+    def write(self, bookmark_id, book_name, lhs, highlight, rhs):
         self.__csv_writer.writerow({
+            'ID': bookmark_id,
             'Book': book_name,
             'Bookmark': '{}[{}]{}'.format(lhs, highlight, rhs)
         })
@@ -184,29 +186,29 @@ if __name__ == '__main__':
     db = sqlite3.connect(os.path.join(args.volume, '.kobo/KoboReader.sqlite'))
 
     cursor = db.cursor()
-    cursor.execute('''SELECT ContentID, StartContainerPath, EndContainerPath, Text
+    cursor.execute('''SELECT ContentID, BookmarkID, StartContainerPath, EndContainerPath, Text
                       FROM Bookmark
                       ORDER BY DateModified DESC''')
 
     books_to_bookmarks = {}
 
-    for content_id, start_container_path, end_container_path, text in cursor:
+    for content_id, bookmark_id, start_container_path, end_container_path, text in cursor:
         if not content_id.startswith('file:///mnt/onboard/'):
             continue
         content_id_parts = content_id.split('#', 1)
         book = content_id_parts[0][len('file:///mnt/onboard/'):]
-        books_to_bookmarks.setdefault(book, []).append((start_container_path, end_container_path, text))
+        books_to_bookmarks.setdefault(book, []).append((bookmark_id, start_container_path, end_container_path, text))
 
     with get_output_writer(args.output_format, args.destination) as output_writer:
         for book, bookmarks in books_to_bookmarks.items():
             path = os.path.join(args.volume, book)
             if not is_epub(path):
-                print('Skipping {} because it is not an epub'.format(book))
+                print('Skipping {} because it is not an epub'.format(book), file=sys.stderr)
                 continue
             with ZipFile(path) as book_zip:
-                print('Processing {}...'.format(book))
+                print('Processing {}...'.format(book), file=sys.stderr)
                 book_name = os.path.splitext(os.path.basename(book))[0]
-                for (start_container_path, end_container_path, text) in bookmarks:
+                for (bookmark_id, start_container_path, end_container_path, text) in bookmarks:
                     if text is None:
                         continue
 
@@ -217,4 +219,4 @@ if __name__ == '__main__':
                         parser = MyHTMLParser(args.context, start_container_path_point[6:-1],
                                               end_container_path_point[6:-1], text)
                         parser.feed(book_chapter.read().decode('utf-8'))
-                        output_writer.write(book_name, parser.lhs, parser.highlight, parser.rhs)
+                        output_writer.write(bookmark_id, book_name, parser.lhs, parser.highlight, parser.rhs)
