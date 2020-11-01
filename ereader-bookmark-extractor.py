@@ -14,11 +14,9 @@ nlp.add_pipe(nlp.create_pipe('sentencizer'))
 
 
 class MyHTMLParser(HTMLParser):
-    def __init__(self, context, output_format, write_to, start, end, should_be):
+    def __init__(self, context, start, end, should_be):
         super().__init__()
         self.__context = context
-        self.__output_format = output_format
-        self.__write_to = write_to
         self.__location = []
         self.__start_epubcti = start
         self.__end_epubcti = end
@@ -48,36 +46,23 @@ class MyHTMLParser(HTMLParser):
         if self.__end_epubcti.startswith(anchor):
             self.__scanning = False
             self.__end_pos += int(self.__end_epubcti[len(anchor):])
-            self.write()
+            self.finalize()
         else:
             self.__end_pos = len(self.__scanned_data)
 
-    def write(self):
-        paragraph = self.get_paragraph()
-        (h_start, h_end) = self.get_highlight_interval()
-        (c_start, c_end) = self.get_context_interval()
-        if self.__output_format == 'html':
-            self.__write_to.write('<p>')
-            self.__write_to.write(paragraph[c_start:h_start].lstrip())
-            self.__write_to.write('<strong><font color="green">')
-            self.__write_to.write(paragraph[h_start:h_end].replace('\n', ' '))
-            self.__write_to.write('</font></strong>')
-            self.__write_to.write(paragraph[h_end:c_end].rstrip())
-            self.__write_to.write('</p><hr/>')
-        else:
-            self.__write_to.write(
-                '{}[{}]{}\n\n'.format(
-                    paragraph[c_start:h_start].lstrip(),
-                    paragraph[h_start:h_end].replace('\n', ' '),
-                    paragraph[h_end:c_end].rstrip()
-                )
-            )
+    def finalize(self):
+        paragraph = self.__get_paragraph()
+        (h_start, h_end) = self.__get_highlight_interval()
+        (c_start, c_end) = self.__get_context_interval()
+        self.lhs = paragraph[c_start:h_start].lstrip()
+        self.highlight = paragraph[h_start:h_end].replace('\n', ' ')
+        self.rhs = paragraph[h_end:c_end].rstrip()
 
-    def get_paragraph(self):
+    def __get_paragraph(self):
         return self.__scanned_data.decode('utf-8')
 
-    def get_highlight_interval(self):
-        paragraph = self.get_paragraph()
+    def __get_highlight_interval(self):
+        paragraph = self.__get_paragraph()
         start = len(self.__scanned_data[:self.__start_pos].decode('utf-8'))
         end = len(self.__scanned_data[:self.__end_pos].decode('utf-8'))
         highlight = paragraph[start:end]
@@ -88,10 +73,10 @@ class MyHTMLParser(HTMLParser):
             end -= 1
         return (start, end)
 
-    def get_context_interval(self):
-        paragraph = self.get_paragraph()
+    def __get_context_interval(self):
+        paragraph = self.__get_paragraph()
         if self.__context == 'sentence':
-            highlight_interval = self.get_highlight_interval()
+            highlight_interval = self.__get_highlight_interval()
             sentences = list(nlp(paragraph).sents)
             sentence_indexes = chain(map(lambda sentence: sentence[0].idx, sentences), [len(paragraph)])
             sentence_intervals = pairwise(sentence_indexes)
@@ -159,7 +144,16 @@ if __name__ == '__main__':
                     _, end_container_path_point = end_container_path.split('#', 1)
 
                     with book_zip.open(chapter_file) as book_chapter:
-                        parser = MyHTMLParser(args.context, args.output_format, output,
-                                              start_container_path_point[6:-1], end_container_path_point[6:-1],
-                                              text)
+                        parser = MyHTMLParser(args.context, start_container_path_point[6:-1],
+                                              end_container_path_point[6:-1], text)
                         parser.feed(book_chapter.read().decode('utf-8'))
+                        if args.output_format == 'html':
+                            output.write('<p>')
+                            output.write(parser.lhs)
+                            output.write('<strong><font color="green">')
+                            output.write(parser.highlight)
+                            output.write('</font></strong>')
+                            output.write(parser.rhs)
+                            output.write('</p><hr/>')
+                        else:
+                            output.write('{}[{}]{}\n\n'.format(parser.lhs, parser.highlight, parser.rhs))
