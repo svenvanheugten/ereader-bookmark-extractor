@@ -5,6 +5,7 @@ from more_itertools import pairwise
 from itertools import chain
 import spacy.lang.en
 import argparse
+import sys
 import csv
 import re
 import os
@@ -137,7 +138,7 @@ class HTMLOutputWriter:
 
 class CsvOutputWriter:
     def __init__(self, destination):
-        self.__output = open(destination, 'w')
+        self.__output = open(destination, 'w') if destination != '-' else sys.stdout
         self.__csv_writer = csv.DictWriter(self.__output, fieldnames=['Book', 'Bookmark'])
         self.__csv_writer.writeheader()
 
@@ -201,10 +202,10 @@ if __name__ == '__main__':
         for book, bookmarks in books_to_bookmarks.items():
             path = os.path.join(args.volume, book)
             if not is_epub(path):
-                print('Skipping {} because it is not an epub'.format(book))
+                print('Skipping {} because it is not an epub'.format(book), file=sys.stderr)
                 continue
             with ZipFile(path) as book_zip:
-                print('Processing {}...'.format(book))
+                print('Processing {}...'.format(book), file=sys.stderr)
                 book_name = os.path.splitext(os.path.basename(book))[0]
                 for (start_container_path, end_container_path, text) in bookmarks:
                     if text is None:
