@@ -72,7 +72,7 @@ def extract(volume, destination):
     for content_id, start_container_path, start_offset, end_container_path, end_offset, text in cursor:
         if not content_id.startswith('/mnt/onboard/'):
             continue
-        content_id_parts = content_id.split('!!', 1)
+        content_id_parts = content_id.replace('!OEBPS!', '!!OEBPS/').split('!!', 1)
         book = content_id_parts[0][len('/mnt/onboard/'):]
         chapter_file_parts = content_id_parts[1].split('#', 1)
         chapter_file = chapter_file_parts[0]
