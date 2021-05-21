@@ -17,7 +17,7 @@ if __name__ == '__main__':
         db = list(reader)
 
     for row in db:
-        bookmark = re.search(r'(.*?)\[(.*?)\](.*?)', row['Bookmark'])
+        bookmark = re.search(r'(.*?)\[(.*?)\](.*)', row['Bookmark'])
         deck.add_note(genanki.Note(
             guid=row['ID'],
             model=genanki.CLOZE_MODEL,
