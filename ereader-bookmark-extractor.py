@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import sqlite3
 from zipfile import ZipFile, is_zipfile
 from html.parser import HTMLParser

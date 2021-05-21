@@ -5,7 +5,7 @@ Run
 Run for Kobo devices:
 
 ```bash
-python3 ereader-bookmark-extractor.py /Volumes/KOBOeReader .
+./ereader-bookmark-extractor.py /Volumes/KOBOeReader .
 ```
 
 Build
@@ -19,5 +19,5 @@ python3 setup.py py2app
 Examples
 --------
 ```bash
-python3 ereader-bookmark-extractor.py /Volumes/KOBOeReader - --context sentence --output-format csv | python3 upsert-to-csv-db.py -
+./ereader-bookmark-extractor.py /Volumes/KOBOeReader - --context sentence --output-format csv | ./upsert-to-csv-db.py -
 ```
