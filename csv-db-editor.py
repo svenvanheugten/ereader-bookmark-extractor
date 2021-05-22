@@ -35,6 +35,8 @@ if __name__ == '__main__':
         )
         for index, row in enumerate(bookmarks)
     ])
+    untranslated_bookmarks = (index for index, row in enumerate(bookmarks) if row['Translation'].strip() == '')
+    content.set_focus(next(iter(untranslated_bookmarks)))
     listbox = urwid.ListBox(content)
 
     loop = urwid.MainLoop(listbox, palette)
