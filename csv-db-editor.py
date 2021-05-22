@@ -14,8 +14,20 @@ if __name__ == '__main__':
         reader = csv.DictReader(db_file)
         db = list(reader)
 
-    palette = [('I say', 'white', 'default'),]
-    content = urwid.SimpleListWalker([urwid.Edit(('I say', '\n{}\n'.format(e['Bookmark']))) for e in db])
+    bookmarks = [re.search(r'(.*?)\[(.*?)\](.*)', row['Bookmark']) for row in db]
+
+    palette = [
+        ('context', 'white', 'default'),
+        ('highlight', 'dark green', 'default')
+    ]
+    content = urwid.SimpleListWalker([
+        urwid.Edit([
+            ('context', '\n' + bookmark.group(1)),
+            ('highlight', bookmark.group(2)),
+            ('context', bookmark.group(3) + '\n'),
+        ])
+        for bookmark in bookmarks
+    ])
     listbox = urwid.ListBox(content)
 
     def update_on_cr(key):
