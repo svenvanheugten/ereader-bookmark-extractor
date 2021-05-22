@@ -6,6 +6,7 @@ import os.path
 import urwid
 import signal
 import sys
+import tempfile
 
 
 DB_LOCATION = os.path.expanduser('~/flashcard-db.csv')
@@ -25,7 +26,7 @@ if __name__ == '__main__':
         ('context', 'white', 'default'),
         ('highlight', 'dark green', 'default')
     ]
-    content = urwid.SimpleListWalker([
+    content = [
         urwid.Edit(
             [
                 ('context', ('\n' if index != 0 else '') + row['Bookmark'].group(1)),
@@ -36,14 +37,27 @@ if __name__ == '__main__':
             edit_text=row['Translation']
         )
         for index, row in enumerate(bookmarks)
-    ])
+    ]
+    list_walker = urwid.SimpleListWalker(content)
     untranslated_bookmarks = (index for index, row in enumerate(bookmarks) if row['Translation'].strip() == '')
-    content.set_focus(next(iter(untranslated_bookmarks)))
-    listbox = urwid.ListBox(content)
+    list_walker.set_focus(next(iter(untranslated_bookmarks)))
+    listbox = urwid.ListBox(list_walker)
 
     loop = urwid.MainLoop(listbox, palette)
 
     def signal_handler(sig, frame):
+        temp_fd, temp_filename = tempfile.mkstemp()
+
+        try:
+            with os.fdopen(temp_fd, 'w') as tmp:
+                writer = csv.DictWriter(tmp, fieldnames=['ID', 'Book', 'Bookmark', 'Translation'])
+                writer.writeheader()
+                for row, edit in zip(db, content):
+                    writer.writerow({**row, 'Translation': edit.get_edit_text()})
+            os.replace(temp_filename, DB_LOCATION)
+        except:  # noqa: E722
+            os.remove(temp_filename)
+
         sys.exit(0)
 
     signal.signal(signal.SIGINT, signal_handler)
