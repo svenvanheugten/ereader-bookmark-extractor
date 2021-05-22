@@ -14,8 +14,8 @@ if __name__ == '__main__':
         reader = csv.DictReader(db_file)
         db = list(reader)
 
-    palette = [('I say', 'default,bold', 'default', 'bold'),]
-    content = urwid.SimpleListWalker([urwid.Edit(('I say', "{}\n".format(e['Bookmark']))) for e in db])
+    palette = [('I say', 'white', 'default'),]
+    content = urwid.SimpleListWalker([urwid.Edit(('I say', '\n{}\n'.format(e['Bookmark']))) for e in db])
     listbox = urwid.ListBox(content)
 
     def update_on_cr(key):
