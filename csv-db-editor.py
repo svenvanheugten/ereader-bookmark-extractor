@@ -4,6 +4,8 @@ import re
 import csv
 import os.path
 import urwid
+import signal
+import sys
 
 
 DB_LOCATION = os.path.expanduser('~/flashcard-db.csv')
@@ -40,4 +42,9 @@ if __name__ == '__main__':
     listbox = urwid.ListBox(content)
 
     loop = urwid.MainLoop(listbox, palette)
+
+    def signal_handler(sig, frame):
+        sys.exit(0)
+
+    signal.signal(signal.SIGINT, signal_handler)
     loop.run()
