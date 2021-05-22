@@ -33,7 +33,6 @@ if __name__ == '__main__':
                 ('highlight', row['Bookmark'].group(2)),
                 ('context', row['Bookmark'].group(3) + '\n')
             ],
-            multiline=True,
             edit_text=row['Translation']
         )
         for index, row in enumerate(bookmarks)
