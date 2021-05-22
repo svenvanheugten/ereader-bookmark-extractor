@@ -14,26 +14,28 @@ if __name__ == '__main__':
         reader = csv.DictReader(db_file)
         db = list(reader)
 
-    bookmarks = [re.search(r'(.*?)\[(.*?)\](.*)', row['Bookmark']) for row in db]
+    bookmarks = [
+        {**row, 'Bookmark': re.search(r'(.*?)\[(.*?)\](.*)', row['Bookmark'])}
+        for row in db
+    ]
 
     palette = [
         ('context', 'white', 'default'),
         ('highlight', 'dark green', 'default')
     ]
     content = urwid.SimpleListWalker([
-        urwid.Edit([
-            ('context', '\n' + bookmark.group(1)),
-            ('highlight', bookmark.group(2)),
-            ('context', bookmark.group(3) + '\n'),
-        ])
-        for bookmark in bookmarks
+        urwid.Edit(
+            [
+                ('context', ('\n' if index != 0 else '') + row['Bookmark'].group(1)),
+                ('highlight', row['Bookmark'].group(2)),
+                ('context', row['Bookmark'].group(3) + '\n')
+            ],
+            multiline=True,
+            edit_text=row['Translation']
+        )
+        for index, row in enumerate(bookmarks)
     ])
     listbox = urwid.ListBox(content)
 
-    def update_on_cr(key):
-        if key == 'enter':
-            focus_widget, position = listbox.get_focus()
-            listbox.set_focus(position + 1)
-
-    loop = urwid.MainLoop(listbox, palette, unhandled_input=update_on_cr)
+    loop = urwid.MainLoop(listbox, palette)
     loop.run()
