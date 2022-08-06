@@ -70,10 +70,13 @@ def extract(volume, destination):
     books_to_bookmarks = {}
 
     for content_id, start_container_path, start_offset, end_container_path, end_offset, text in cursor:
-        if not content_id.startswith('/mnt/onboard/'):
-            continue
         content_id_parts = content_id.replace('!OEBPS!', '!!OEBPS/').split('!!', 1)
-        book = content_id_parts[0][len('/mnt/onboard/'):]
+        if content_id_parts[0].startswith('/mnt/onboard/'):
+            book = content_id_parts[0][len('/mnt/onboard/'):]
+        elif content_id_parts[0].startswith('/mnt/sd/kobocloud/'):
+            book = os.path.join('.add/kobocloud/Library', content_id_parts[0][len('/mnt/sd/kobocloud/'):])
+        else:
+            continue
         chapter_file_parts = content_id_parts[1].split('#', 1)
         chapter_file = chapter_file_parts[0]
         books_to_bookmarks.setdefault(book, []).append((chapter_file, start_container_path, start_offset, end_container_path, end_offset, text))
